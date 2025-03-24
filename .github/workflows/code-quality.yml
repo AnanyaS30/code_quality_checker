@@ -1,0 +1,38 @@
+name: Code Quality
+
+on: [push, pull_request]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install fastapi uvicorn pylint radon flake8
+
+    - name: Run analysis
+      run: |
+        source venv/bin/activate
+        uvicorn main:app --host 0.0.0.0 --port 8000 &
+        sleep 5  # Give the server time to start
+        curl -F "file=@simple_poor_naming.py" http://127.0.0.1:8000/analyze-code > result.json
+
+    - name: Output result
+      run: cat result.json
+
+    - name: Post result as comment
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        path: result.json
